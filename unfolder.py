@@ -25,21 +25,17 @@ from loguru import logger
 
 
 def setup_logging():
-    # Simplified loguru output: just the message
     logger.remove()
     logger.add(sys.stdout, level="INFO", format="{message}")
 
 
-# -----------------------------
-# rename mode (from rename.py)
-# -----------------------------
 def _rename_walk(dir_path: str, head: int, floor: int, library: Dict[str, str]) -> None:
     entries = os.scandir(dir_path)
     for entry in entries:
         if entry.is_file():
-            # Preserve original logic:
-            # new_name = entry.path[:head] + entry.path[head:].replace("\\", "_").replace("/", "_")
-            new_name = entry.path[:head] + entry.path[head:].replace("\\", "_").replace("/", "_")
+            new_name = entry.path[:head] + entry.path[head:].replace("\\", "_").replace(
+                "/", "_"
+            )
             if new_name != entry.path:
                 if not os.path.exists(new_name):
                     if entry.path in library:
@@ -53,7 +49,12 @@ def _rename_walk(dir_path: str, head: int, floor: int, library: Dict[str, str]) 
         else:
             # Preserve original recursion and path concatenation with backslash
             subdir = dir_path + "\\" + entry.name
-            _rename_walk(subdir, head + (len(entry.name) + 1 if floor > 0 else 0), floor - 1, library)
+            _rename_walk(
+                subdir,
+                head + (len(entry.name) + 1 if floor > 0 else 0),
+                floor - 1,
+                library,
+            )
             if floor <= 0:
                 try:
                     os.rmdir(entry.path)
@@ -62,11 +63,9 @@ def _rename_walk(dir_path: str, head: int, floor: int, library: Dict[str, str]) 
 
 
 def cmd_rename(root: str, floor: int, lib_path: str) -> None:
-    # Ensure paths are absolute and the library is tied to the provided root
     root_abs = os.path.abspath(root)
     lib_abs = os.path.abspath(lib_path)
 
-    # Load or init library (preserve original messages)
     try:
         with open(lib_abs, "r", encoding="utf-8") as f:
             library = json.load(f)
@@ -77,21 +76,16 @@ def cmd_rename(root: str, floor: int, lib_path: str) -> None:
 
     old_cwd = os.getcwd()
     try:
-        # Work inside the root so entry.path remains relative like ".\\..." (matches original behavior)
         os.chdir(root_abs)
-        head = 2  # original behavior when operating at "."
+        head = 2
         _rename_walk(".", head, floor, library)
     finally:
         os.chdir(old_cwd)
 
-    # Save library
     with open(lib_abs, "w", encoding="utf-8") as f:
         json.dump(library, f, ensure_ascii=False)
 
 
-# -----------------------------
-# repack mode (from repack.py)
-# -----------------------------
 def cmd_repack(root: str, lib_path: str, keep_lib: bool) -> None:
     root_abs = os.path.abspath(root)
     lib_abs = os.path.abspath(lib_path)
@@ -115,7 +109,6 @@ def cmd_repack(root: str, lib_path: str, keep_lib: bool) -> None:
                 new_path = entry.path
 
                 if library is None:
-                    # Preserve original classic logic
                     nlist = list(new_path)
                     if new_path.rfind("_") == -1 and new_path.rfind("-U") == -1:
                         continue
@@ -132,8 +125,8 @@ def cmd_repack(root: str, lib_path: str, keep_lib: bool) -> None:
                 logger.info("Rename %s to %s" % (entry.path, new_path))
 
                 if entry.path.rfind("_") != -1:
-                    if not os.path.exists(new_path[0:new_path.rfind("\\")]):
-                        os.makedirs(new_path[0:new_path.rfind("\\")])
+                    if not os.path.exists(new_path[0 : new_path.rfind("\\")]):
+                        os.makedirs(new_path[0 : new_path.rfind("\\")])
 
                 if not os.path.exists(new_path):
                     os.rename(entry.path, new_path)
@@ -142,13 +135,11 @@ def cmd_repack(root: str, lib_path: str, keep_lib: bool) -> None:
     finally:
         os.chdir(old_cwd)
 
-    # Preserve original cleanup of library after repack unless user opts to keep it
     if not keep_lib:
         try:
             os.remove(lib_abs)
         except Exception:
             pass
-
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -157,16 +148,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    # rename subcommand (from rename.py)
-    pr = sub.add_parser("rename", help="Flatten file paths into underscores; records mapping in .rename_lib.")
-    pr.add_argument("--dir", default=".", help="Root directory to process. Default: current directory (.)")
-    pr.add_argument("--floor", type=int, default=0, help="Number of top levels to keep before flattening. Default: 0")
-    pr.add_argument("--lib", default=None, help="Path to rename library file. Default: <dir>/.rename_lib")
+    pr = sub.add_parser(
+        "rename",
+        help="Flatten file paths into underscores; records mapping in .rename_lib.",
+    )
+    pr.add_argument(
+        "--dir",
+        default=".",
+        help="Root directory to process. Default: current directory (.)",
+    )
+    pr.add_argument(
+        "--floor",
+        type=int,
+        default=0,
+        help="Number of top levels to keep before flattening. Default: 0",
+    )
+    pr.add_argument(
+        "--lib",
+        default=None,
+        help="Path to rename library file. Default: <dir>/.rename_lib",
+    )
 
-    # repack subcommand (from repack.py)
-    pp = sub.add_parser("repack", help="Restore file paths using .rename_lib or classic underscore-based method.")
-    pp.add_argument("--dir", default=".", help="Root directory to process. Default: current directory (.)")
-    pp.add_argument("--lib", default=None, help="Path to rename library file. Default: <dir>/.rename_lib")
+    pp = sub.add_parser(
+        "repack",
+        help="Restore file paths using .rename_lib or classic underscore-based method.",
+    )
+    pp.add_argument(
+        "--dir",
+        default=".",
+        help="Root directory to process. Default: current directory (.)",
+    )
+    pp.add_argument(
+        "--lib",
+        default=None,
+        help="Path to rename library file. Default: <dir>/.rename_lib",
+    )
     pp.add_argument(
         "--keep-lib",
         action="store_true",
