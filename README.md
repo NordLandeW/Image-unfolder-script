@@ -2,6 +2,8 @@
 
 一个用于将文件从子目录展平（移动）到根目录，并在之后恢复它们的小工具。
 
+这个仓库已经合并到 https://github.com/NordLandeW/Convenient-Scripts 中，故旧仓库已归档。
+
 **安装**
 ```bash
 pip install -r requirements.txt
